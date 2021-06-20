@@ -1,0 +1,14 @@
+{
+  "name": "2021-6-fps",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ps5": "^1.0.0"
+  }
+}
