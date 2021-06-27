@@ -1,42 +1,37 @@
+'use strict';
+
 class Vec2 {
     /**
-     * @param {number} x ベクトルのx成分
-     * @param {number} y ベクトルのy成分
+     * @param {number} x
+     * @param {number} y
      */
     constructor(x, y) {
         this.x = x;
         this.y = y;
     }
     /**
-     * @param {Vec2} b 足したいベクトル
+     * @param {Vec2} b
      */
     add(b) {
         let a = this;
         return new Vec2(a.x + b.x, a.y + b.y);
     }
     /**
-     * @param {Vec2} b 引きたいベクトル
+     * @param {Vec2} b
      */
     sub(b) {
         let a = this;
         return new Vec2(a.x - b.x, a.y - b.y);
     }
-    /**
-     * このベクトルのコピーを返す
-     */
     copy() {
         return new Vec2(this.x, this.y);
     }
     /**
-     * このベクトルの実数s倍を求める。
-     * @param {number} s 何倍するか
+     * @param {number} s
      */
     mult(s) {
         return new Vec2(s * this.x, s * this.y);
     }
-    /**
-     * このベクトルの大きさを求める。
-     */
     mag() {
         return sqrt(this.x ** 2 + this.y ** 2);
     }
@@ -52,38 +47,30 @@ class Ray2 {
         this.way = way;
     }
     /**
-     * 位置ベクトルと方向ベクトルではなく、始点と終点からレイを作る。
-     * ※staticについて: https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Classes/static
      * @param {Vec2} begin
      * @param {Vec2} end
      */
-    static with2p(begin, end) {
+    static withPoints(begin, end) {
         return new Ray2(begin, end.sub(begin));
     }
-    /**
-     * このレイの始点を求める
-     * ※getをつけると、計算時に r.begin() ではなく r.begin と書くだけでよくなる。
-     */
     get begin() {
         return this.pos;
     }
-    /**
-     * このレイの終点を求める
-     */
     get end() {
         return this.pos.add(this.way);
     }
     /**
-     * このレイと、r2の交点を求める。
      * @param {Ray2} r2
      */
     intersection(r2) {
         let r1 = this;
         // Y軸並行の線分はこのコードでは扱えないので、並行の場合は微妙にずらす
+        // an dirty hack since this code cannot handle Y-axis parallel rays.
         if (abs(r1.way.x) < 0.01) r1.way.x = 0.01;
         if (abs(r2.way.x) < 0.01) r2.way.x = 0.01;
 
         // r1,r2を直線として見て、その交点を求める
+        // Treat r1,r2 as straight lines and calc the intersection point.
         let t1 = r1.way.y / r1.way.x;
         let t2 = r2.way.y / r2.way.x;
         let x1 = r1.pos.x;
@@ -94,12 +81,12 @@ class Ray2 {
         let sy = t1 * (sx - x1) + y1;
 
         // 交点が線分上にないときはnullを返す
-        // ※ nullについて: https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/null
+        // Return null if the intersection point is not on r1 and r2.
         if (
-            sx > min(r1.begin.x, r1.end.x) &&
-            sx < max(r1.begin.x, r1.end.x) &&
-            sx > min(r2.begin.x, r2.end.x) &&
-            sx < max(r2.begin.x, r2.end.x)
+            sx > min(r1.begin.x, r1.end.x)
+            && sx < max(r1.begin.x, r1.end.x)
+            && sx > min(r2.begin.x, r2.end.x)
+            && sx < max(r2.begin.x, r2.end.x)
         ) {
             return new Vec2(sx, sy);
         } else {
@@ -115,87 +102,115 @@ class Player {
     }
 }
 
-/** @type {Player} */
-let player;
+class Game {
+    constructor() {
+        this.player = new Player();
+        this.walls = [];
+    }
+    reset() {
+        this.player.pos = new Vec2(150, 250);
+        this.player.angle = 0;
+
+        this.walls = [
+            Ray2.withPoints(new Vec2(50, 50), new Vec2(100, 300)),
+            Ray2.withPoints(new Vec2(100, 300), new Vec2(250, 200)),
+            Ray2.withPoints(new Vec2(250, 200), new Vec2(50, 50)),
+        ];
+    }
+}
+
+// グローバル変数 Global variables
+let game;
 
 function setup() {
-    createCanvas(640, 360);
+    createCanvas(720, 480);
 
-    player = new Player();
-    player.pos = new Vec2(100, 200);
-    player.angle = -PI / 2;
+    game = new Game();
+    game.reset();
 }
 
 function draw() {
+    noSmooth();
+
     // 背景
-    background(60);
+    background(64);
 
     // 壁を描画. Draw the walls
     strokeWeight(3);
     stroke('white');
-
-    // 壁の定義。
-    // ※このように書くと、push関数を使わなくてもArrayに変数を入れられる。
-    let walls = [
-        Ray2.with2p(new Vec2(50, 50), new Vec2(100, 300)),
-        Ray2.with2p(new Vec2(100, 300), new Vec2(250, 200)),
-        Ray2.with2p(new Vec2(250, 200), new Vec2(50, 50)),
-    ];
+    let walls = game.walls;
     for (let wall of walls) {
         line(wall.begin.x, wall.begin.y, wall.end.x, wall.end.y);
     }
 
-    // プレイヤーを描画
+    // プレイヤーを描画. Draw the player
     stroke('yellow');
     strokeWeight(20);
+    let player = game.player;
     point(player.pos.x, player.pos.y);
 
-    // キー入力
-    // ※ a-=b は、a=a-b と同じ。同様に、a+=b は、a=a+b と同じ。
+    // キー入力. Key input
     if (keyIsDown(LEFT_ARROW)) player.angle -= PI / 120;
     if (keyIsDown(RIGHT_ARROW)) player.angle += PI / 120;
 
-    // プレイヤーの視界を描画
+    // 3Dビューを描画. Draw the 3d view.
     {
+        let viewRect = new Ray2(new Vec2(380, 40), new Vec2(320, 240));
+
         let fov = PI / 2;
         let centerAngle = player.angle;
         let leftAngle = centerAngle - fov / 2;
         let rightAngle = centerAngle + fov / 2;
-        let beamTotal = 30;
+        let beamTotal = 32;
         let beamIndex = -1;
-        for (let angle = leftAngle; angle < rightAngle + 0.01; angle += fov / beamTotal) {
+        for (let angle = leftAngle; angle < rightAngle - 0.01; angle += fov / beamTotal) {
             beamIndex++;
             let beam = new Ray2(
                 player.pos.copy(),
-                new Vec2(cos(angle), sin(angle)).mult(100)
+                new Vec2(cos(angle), sin(angle)).mult(120)
             );
             stroke('yellow');
-            strokeWeight(2);
+            strokeWeight(1);
             line(beam.begin.x, beam.begin.y, beam.end.x, beam.end.y);
 
-            for (let wall of walls) {
-                let hitPos = beam.intersection(wall);
-                if (hitPos === null) continue;
-                stroke('yellow');
-                strokeWeight(10);
-                point(hitPos.x, hitPos.y);
+            // 光線が2枚以上の壁にあたっていたら、一番近いものを採用する。
+            // Adapt the nearest beam.
+            let allHitBeamWays = walls.map(wall => beam.intersection(wall))
+                .filter(pos => pos !== null)
+                .map(pos => pos.sub(beam.begin));
+            if (allHitBeamWays.length === 0) continue;
+            let hitBeam = allHitBeamWays.reduce((a, b) => a.mag() < b.mag() ? a : b);
 
-                // 3Dビューに描画
-                let viewRoot = new Vec2(320, 180);
-                let wallDist = hitPos.sub(beam.begin).mag();
-                let wallPerpDist = wallDist;
-                let lineHeight = 2800 / wallPerpDist;
-                let lineBegin = viewRoot.add(new Vec2(300 / beamTotal * beamIndex, -lineHeight / 2));
-                let lineEnd = lineBegin.add(new Vec2(0, lineHeight));
-                stroke('white');
-                strokeWeight(4);
-                line(lineBegin.x, lineBegin.y, lineEnd.x, lineEnd.y);
-            }
+            stroke('yellow');
+            strokeWeight(8);
+            let hitPos = hitBeam.add(beam.begin);
+            point(hitPos.x, hitPos.y);
+
+            let wallDist = hitBeam.mag();
+            let wallPerpDist = wallDist * cos(angle - centerAngle);
+            let lineHeight = constrain(2800 / wallPerpDist, 0, viewRect.way.y);
+            let lineBegin = viewRect.begin.add(
+                new Vec2(
+                    viewRect.way.x / beamTotal * beamIndex,
+                    viewRect.way.y / 2 - lineHeight / 2
+                )
+            );
+            let lightness = 224;
+            strokeWeight(0);
+            fill(lightness);
+            rect(lineBegin.x, lineBegin.y, 7, lineHeight);
         }
+
+        // 3Dビューの枠を描画. Draw border lines of the 3d view.
+        noFill();
+        stroke('cyan');
+        strokeWeight(4);
+        rect(viewRect.pos.x, viewRect.pos.y, viewRect.way.x, viewRect.way.y);
     }
 }
 
 function touchMoved(event) {
+    let player = game.player;
     player.pos.x = event.clientX;
     player.pos.y = event.clientY;
 }
