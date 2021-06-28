@@ -102,6 +102,12 @@ class Player {
     }
 }
 
+class Ballet {
+    constructor() {
+        this.pos = new Vec2(0, 0);
+    }
+}
+
 class Level {
     constructor() {
         this.walls = [];
@@ -160,25 +166,32 @@ class Game {
     constructor() {
         this.player = new Player();
         this.level = new Level();
+        this.ballet = new Ballet();
     }
     reset() {
         this.player.pos = new Vec2(118, 201);
         this.player.angle = -PI / 2;
+        this.ballet.pos = new Vec2(118, 201);
     }
 }
 
 // グローバル変数 Global variables
 let game;
+let ratio;
+let dist;
+let total;
 
 function setup() {
     createCanvas(640, 480);
 
     game = new Game();
     game.reset();
+    ratio = 250;
+    total = 0;
 
     game.level.addTilemap(
         (
-            '........' +
+            'O.......' +
             '........' +
             '..OOO...' +
             '..O.....' +
@@ -215,12 +228,29 @@ function draw() {
     strokeWeight(24);
     let player = game.player;
     point(player.pos.x, player.pos.y);
+    let ballet = game.ballet;
 
     // キー入力. Key input
-    if (keyIsDown(LEFT_ARROW)) player.angle -= PI / 180;
-    if (keyIsDown(RIGHT_ARROW)) player.angle += PI / 180;
+    if (keyIsDown(LEFT_ARROW)) {
+        player.angle -= PI / 180;
+        ballet.pos.x = player.pos.x;
+        ballet.pos.y = player.pos.y;
+        ratio = 250;
+    }
+    if (keyIsDown(RIGHT_ARROW)) {
+        player.angle += PI / 180;
+        ballet.pos.x = player.pos.x;
+        ballet.pos.y = player.pos.y;
+        ratio = 250;
+    }
+    if (keyIsDown(32)) {
+        ballet.pos.x+= cos(player.angle);
+        ballet.pos.y+= sin(player.angle);
+        ratio -=2;
+        total +=2;
+    }
 
-    // 3Dビューを描画. Draw the 3dview.
+    // 3Dビューを描画. Draw the 3D View.
     {
         let viewRect = new Ray2(new Vec2(305, 40), new Vec2(320, 240));
 
@@ -230,11 +260,19 @@ function draw() {
         let rightAngle = centerAngle + fov / 2;
         let beamTotal = 40;
         let beamIndex = -1;
+        let balletToWallDist = 10000;
+        let playerToWallDist = 10000;
+        let playerToBalletDist = 10000;
         for (let angle = leftAngle; angle < rightAngle - 0.01; angle += fov / beamTotal) {
             beamIndex++;
             let beam = new Ray2(
                 player.pos.copy(),
-                new Vec2(cos(angle), sin(angle)).mult(120)
+                new Vec2(cos(angle), sin(angle)).mult(1000)
+            );
+
+            let maxBeam = new Ray2(
+                player.pos.copy(),
+                new Vec2(cos(angle), sin(angle)).mult(1000)
             );
 
             // 光線が2枚以上の壁にあたっていたら、一番近いものを採用する。
@@ -250,11 +288,11 @@ function draw() {
             }
             let hitBeam = allHitBeamWays.reduce((a, b) => a.mag() < b.mag() ? a : b);
 
-            // 3Dビューに縦線を1本描画する draw a line into 3dview
+            // 3Dビューに縦線を1本描画する draw a line into 3D View
             let hitPos = hitBeam.add(beam.begin);
             let wallDist = hitBeam.mag();
             let wallPerpDist = wallDist * cos(angle - centerAngle);
-            let lineHeight = constrain(3500 / wallPerpDist, 0, viewRect.way.y);
+            let lineHeight = constrain(5500 / wallPerpDist, 0, viewRect.way.y);
             lineHeight -= lineHeight % 8;
             let lineBegin = viewRect.begin.add(
                 new Vec2(
@@ -263,33 +301,80 @@ function draw() {
                 )
             );
             let lightness = 224;
-            let lmft = 1.3; //lightness multiplier for topview
+            let lmft = 1.3; // lightness multiplier for top view
             let tileSize = game.level.tileSize;
             let pillarSize = 5;
             if (
                 ((hitPos.x % tileSize < pillarSize) || (hitPos.x % tileSize > tileSize - pillarSize))
                 && ((hitPos.y % tileSize < pillarSize) || (hitPos.y % tileSize > tileSize - pillarSize))
             ) {
-                stroke(215 * lmft, 179 * lmft, 111 * lmft); //wooden pillar color
+                stroke(215 * lmft, 179 * lmft, 111 * lmft); // wooden pillar color
                 fill(215, 179, 111);
             } else {
-                stroke(lightness * lmft); //concrete wall color
+                stroke(lightness * lmft); // concrete wall color
                 fill(lightness);
             }
             strokeWeight(0);
             rect(lineBegin.x, lineBegin.y, 7, lineHeight);
 
             // ↑の縦線に対応した光線を、俯瞰図に描画する.
-            // draw a beam correspond to above 3dview line into the topview.
+            // draw a beam correspond to above 3D View line into the top view.
             strokeWeight(1);
             line(player.pos.x, player.pos.y, player.pos.add(hitBeam).x, player.pos.add(hitBeam).y);
+            if (beamIndex == beamTotal/2) {
+                playerToWallDist = sqrt((player.pos.add(hitBeam).x - player.pos.x) ** 2 + (player.pos.add(hitBeam).y - player.pos.y) ** 2) - 24/2
+                playerToBalletDist = sqrt((player.pos.x - ballet.pos.x) ** 2 + (player.pos.y - ballet.pos.y) ** 2) - 12/2;
+                balletToWallDist = sqrt((player.pos.add(hitBeam).x - ballet.pos.x) ** 2 + (player.pos.add(hitBeam).y - ballet.pos.y) ** 2) - 12/2;
+                if (playerToBalletDist > playerToWallDist) {
+                    balletToWallDist = - balletToWallDist;
+                }
+            }
         }
 
-        // 3Dビューの枠を描画. Draw border lines of the 3dview.
+        // 3Dビューの枠を描画. Draw border lines of the 3D View.
         noFill();
         stroke(66, 200, 251);
         strokeWeight(6);
+
         rect(viewRect.pos.x, viewRect.pos.y, viewRect.way.x, viewRect.way.y);
+
+        // 3Dビューに弾を表示する
+        if (ratio <= 249 && balletToWallDist > -30) {
+            if (ratio > 0){
+                stroke(66, 200, 51);
+                strokeWeight(ratio);
+                point(viewRect.way.x/2 + viewRect.pos.x, viewRect.way.y/2 + viewRect.pos.y);
+            } else if (balletToWallDist < 0) {
+                let width = viewRect.way.x * 2 + viewRect.pos.x;
+                let height = viewRect.way.y + viewRect.pos.y;
+
+                let centX = width / 2;
+                let centY = height / 2;
+                let radius = 40;
+                //for文の初期値を0から5に推移することで回転
+                for (let i = frameCount % 15; i <= 800; i += 15) {
+                    //中心から少しづつ外に向けていく
+                    radius += 0.8;
+                    let rad = radians(i);
+                    let x = centX + radius * cos(rad);
+                    let y = centY + radius * sin(rad);
+                    stroke(66, 200, 51);
+                    strokeWeight(3);
+                    arc(x, y, 5, 15, 70, PI);
+                }
+            }
+        } else {
+            // 初期化
+            ballet.pos.x = player.pos.x;
+            ballet.pos.y = player.pos.y;
+            ratio = 250;
+        }
+
+        if (balletToWallDist > 0){
+            stroke(224, 204, 0);
+            strokeWeight(12);
+            point(ballet.pos.x, ballet.pos.y)
+        }
     }
 }
 
@@ -297,5 +382,8 @@ function touchMoved(event) {
     let player = game.player;
     player.pos.x = event.clientX;
     player.pos.y = event.clientY;
+    let ballet = game.ballet;
+    ballet.pos.x = event.clientX;
+    ballet.pos.y = event.clientY;
+    ratio = 250;
 }
-
