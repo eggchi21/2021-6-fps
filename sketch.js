@@ -339,38 +339,37 @@ function draw() {
         rect(viewRect.pos.x, viewRect.pos.y, viewRect.way.x, viewRect.way.y);
 
         // 3Dビューに弾を表示する
-        if (ratio <= 249 && balletToWallDist > -30) {
-            if (ratio > 0){
-                stroke(66, 200, 51);
-                strokeWeight(ratio);
-                point(viewRect.way.x/2 + viewRect.pos.x, viewRect.way.y/2 + viewRect.pos.y);
-            } else if (balletToWallDist < 0) {
-                let width = viewRect.way.x * 2 + viewRect.pos.x;
-                let height = viewRect.way.y + viewRect.pos.y;
+        if (ratio <= 249 && balletToWallDist > 0 && ratio > 0) {
+            stroke(66, 200, 51);
+            strokeWeight(ratio);
+            point(viewRect.way.x/2 + viewRect.pos.x, viewRect.way.y/2 + viewRect.pos.y);
+        } else if (balletToWallDist < 0 && balletToWallDist > -30) {
+            let width = viewRect.way.x * 2 + viewRect.pos.x;
+            let height = viewRect.way.y + viewRect.pos.y;
 
-                let centX = width / 2;
-                let centY = height / 2;
-                let radius = 40;
-                //for文の初期値を0から5に推移することで回転
-                for (let i = frameCount % 15; i <= 800; i += 15) {
-                    //中心から少しづつ外に向けていく
-                    radius += 0.8;
-                    let rad = radians(i);
-                    let x = centX + radius * cos(rad);
-                    let y = centY + radius * sin(rad);
-                    stroke(66, 200, 51);
-                    strokeWeight(3);
-                    arc(x, y, 5, 15, 70, PI);
-                }
+            let centX = width / 2;
+            let centY = height / 2;
+            let radius = 40;
+            //for文の初期値を0から5に推移することで回転
+            for (let i = frameCount % 15; i <= 800; i += 15) {
+                //中心から少しづつ外に向けていく
+                radius += 0.8;
+                let rad = radians(i);
+                let x = centX + radius * cos(rad);
+                let y = centY + radius * sin(rad);
+                stroke(66, 200, 51);
+                strokeWeight(3);
+                arc(x, y, 5, 15, 70, PI);
             }
-        } else {
+        } else if (balletToWallDist < 0 && balletToWallDist < -30) {
             // 初期化
             ballet.pos.x = player.pos.x;
             ballet.pos.y = player.pos.y;
             ratio = 250;
-        }
+        }  
 
-        if (balletToWallDist > 0){
+        // console.log(balletToWallDist)
+        if (balletToWallDist > 0) {
             stroke(224, 204, 0);
             strokeWeight(12);
             point(ballet.pos.x, ballet.pos.y)
