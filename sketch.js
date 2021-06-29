@@ -366,9 +366,8 @@ function draw() {
             ballet.pos.x = player.pos.x;
             ballet.pos.y = player.pos.y;
             ratio = 250;
-        }  
+        }
 
-        // console.log(balletToWallDist)
         if (balletToWallDist > 0) {
             stroke(224, 204, 0);
             strokeWeight(12);
