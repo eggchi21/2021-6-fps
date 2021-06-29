@@ -129,10 +129,10 @@ class Level {
         this.walls.push(new Ray2(new Vec2(s * w, s * h), new Vec2(0, -s * h)));
     }
     /**
-     * @param {string} tilemap 
-     * @param {number} width 
-     * @param {number} height 
-     * @param {number} size 
+     * @param {string} tilemap
+     * @param {number} width
+     * @param {number} height
+     * @param {number} size
      */
     addTilemap(tilemap, width, height, size) {
         this.tilemap = tilemap;
@@ -178,8 +178,8 @@ class Game {
 // グローバル変数 Global variables
 let game;
 let ratio;
-let dist;
-let total;
+let timer;
+let shotAngle;
 
 function setup() {
     createCanvas(640, 480);
@@ -187,7 +187,6 @@ function setup() {
     game = new Game();
     game.reset();
     ratio = 250;
-    total = 0;
 
     game.level.addTilemap(
         (
@@ -209,11 +208,29 @@ function setup() {
     game.level.addWorldEdges();
 }
 
+function keyPressed() {
+    if (keyCode === 32) {
+        if (game.ballet.pos.x != game.player.pos.x || game.ballet.pos.y != game.player.pos.y) {
+            return;
+        }
+        game.ballet.pos.x = game.player.pos.x;
+        game.ballet.pos.y = game.player.pos.y;
+        shotAngle = game.player.angle;
+        ratio = 250;
+        clearInterval(timer);
+        timer = setInterval(()=>{
+            game.ballet.pos.x+= cos(shotAngle);
+            game.ballet.pos.y+= sin(shotAngle);
+            ratio -=2;
+        }, 10)
+    }
+}
+
 function draw() {
     noSmooth();
 
     // 背景
-    background(64);
+    background(32);
 
     // 壁を描画. Draw walls of the level
     strokeWeight(4);
@@ -232,22 +249,14 @@ function draw() {
 
     // キー入力. Key input
     if (keyIsDown(LEFT_ARROW)) {
-        player.angle -= PI / 180;
-        ballet.pos.x = player.pos.x;
-        ballet.pos.y = player.pos.y;
-        ratio = 250;
+        if (game.ballet.pos.x == game.player.pos.x && game.ballet.pos.y == game.player.pos.y) {
+            player.angle -= PI / 180;
+        }
     }
     if (keyIsDown(RIGHT_ARROW)) {
-        player.angle += PI / 180;
-        ballet.pos.x = player.pos.x;
-        ballet.pos.y = player.pos.y;
-        ratio = 250;
-    }
-    if (keyIsDown(32)) {
-        ballet.pos.x+= cos(player.angle);
-        ballet.pos.y+= sin(player.angle);
-        ratio -=2;
-        total +=2;
+        if (game.ballet.pos.x == game.player.pos.x && game.ballet.pos.y == game.player.pos.y) {
+            player.angle += PI / 180;
+        }
     }
 
     // 3Dビューを描画. Draw the 3D View.
@@ -270,11 +279,6 @@ function draw() {
                 new Vec2(cos(angle), sin(angle)).mult(1000)
             );
 
-            let maxBeam = new Ray2(
-                player.pos.copy(),
-                new Vec2(cos(angle), sin(angle)).mult(1000)
-            );
-
             // 光線が2枚以上の壁にあたっていたら、一番近いものを採用する。
             // Adapt the nearest beam.
             let allHitBeamWays = walls.map(wall => beam.intersection(wall))
@@ -293,7 +297,7 @@ function draw() {
             let wallDist = hitBeam.mag();
             let wallPerpDist = wallDist * cos(angle - centerAngle);
             let lineHeight = constrain(5500 / wallPerpDist, 0, viewRect.way.y);
-            lineHeight -= lineHeight % 8;
+            lineHeight -= lineHeight % 1;
             let lineBegin = viewRect.begin.add(
                 new Vec2(
                     viewRect.way.x / beamTotal * beamIndex,
@@ -362,6 +366,7 @@ function draw() {
                 arc(x, y, 5, 15, 70, PI);
             }
         } else if (balletToWallDist < 0 && balletToWallDist < -30) {
+            clearInterval(timer)
             // 初期化
             ballet.pos.x = player.pos.x;
             ballet.pos.y = player.pos.y;
@@ -376,12 +381,16 @@ function draw() {
     }
 }
 
-function touchMoved(event) {
-    let player = game.player;
-    player.pos.x = event.clientX;
-    player.pos.y = event.clientY;
-    let ballet = game.ballet;
-    ballet.pos.x = event.clientX;
-    ballet.pos.y = event.clientY;
-    ratio = 250;
+function mouseMoved() {
+    if ((game.ballet.pos.x == game.player.pos.x && game.ballet.pos.y == game.player.pos.y) &&
+    (mouseX < 8 * 35 - 24/2) && (mouseX > 24/2) && (mouseY < 10 * 35 - 24/2) && (mouseY > 24/2)){
+        clearInterval(timer);
+        let player = game.player;
+        player.pos.x = mouseX;
+        player.pos.y = mouseY;
+        let ballet = game.ballet;
+        ballet.pos.x = mouseX;
+        ballet.pos.y = mouseY;
+        ratio = 250;
+    }
 }
